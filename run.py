@@ -4,7 +4,6 @@ from seeact.agent import SeeActAgent
 
 # Setup your API Key here, or pass through environment
 # os.environ["OPENAI_API_KEY"] = "Your API KEY Here"
-# os.environ["GEMINI_API_KEY"] = "Your API KEY Here"
 
 async def run_agent():
     agent = SeeActAgent(model="gpt-4-turbo")

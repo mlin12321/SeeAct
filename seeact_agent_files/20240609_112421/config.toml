@@ -1,0 +1,35 @@
+[basic]
+save_file_dir = "seeact_agent_files"
+default_task = "Find the pdf of the paper \"GPT-4V(ision) is a Generalist Web Agent, if Grounded\""
+default_website = "https://www.google.com/"
+
+[agent]
+input_info = [ "screenshot",]
+grounding_strategy = "text_choice"
+max_auto_op = 50
+max_continuous_no_op = 5
+highlight = false
+
+[openai]
+rate_limit = -1
+model = "gpt-4-turbo"
+temperature = 0.9
+api_key = "Your API key here"
+
+[browser]
+headless = false
+args = []
+browser_app = "chrome"
+persistant = false
+persistant_user_path = ""
+save_video = false
+tracing = false
+
+[browser.viewport]
+width = 1280
+height = 720
+
+[browser.trace]
+screenshots = true
+snapshots = true
+sources = true
