@@ -159,7 +159,12 @@ async def main(config, base_dir) -> None:
 
     # openai settings
     openai_config = config["openai"]
-    if openai_config["api_key"] == "Your API Key Here":
+    if "OPENAI_API_KEY" in os.environ and "api_key" not in openai_config:
+        openai_config["api_key"] = os.environ["OPENAI_API_KEY"]
+        print("==" * 25 + " USING SYSTEM API KEY DEFAULT " + "==" * 25)
+
+    # assert False, "RETURN"
+    if "api_key" not in openai_config or openai_config["api_key"] == "Your API Key Here":
         raise Exception(
             f"Please set your GPT API key first. (in {os.path.join(base_dir, 'config', 'demo_mode.toml')} by default)")
 
@@ -215,6 +220,7 @@ async def main(config, base_dir) -> None:
     for single_query_task in query_tasks:
         confirmed_task = single_query_task["confirmed_task"]
         confirmed_website = single_query_task["website"]
+
         try:
             confirmed_website_url = website_dict[confirmed_website]
         except:
@@ -248,6 +254,16 @@ async def main(config, base_dir) -> None:
         logger.info(f"website: {confirmed_website_url}")
         logger.info(f"task: {confirmed_task}")
         logger.info(f"id: {task_id}")
+
+        # TODO: CHECK 
+        # Assumes that website_name is stored in query. This is not true for the example data, for example
+        website_name = single_query_task["website_name"]
+        site_auth = website_name.strip().replace(" ", "_").lower() + "_auth.json"
+        if site_auth in os.listdir("../playwright_login"):
+            storage_state="../playwright_login/" + site_auth
+        else:
+            storage_state= None
+
         async with async_playwright() as playwright:
             session_control.browser = await normal_launch_async(playwright)
             session_control.context = await normal_new_context_async(session_control.browser,
@@ -268,6 +284,10 @@ async def main(config, base_dir) -> None:
                 logger.info("Failed to fully load the webpage before timeout")
                 logger.info(e)
             await asyncio.sleep(3)
+
+            await asyncio.sleep(10)
+
+            assert False, "testing..."
 
             taken_actions = []
             complete_flag = False

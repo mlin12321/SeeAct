@@ -5,8 +5,13 @@
 *.png
 __pycache__/
 online_results/*
-seeact_package/seeact_agent_files/*
 
+# Generated files
+seeact_package/seeact_agent_files/*
+playwright_login/*.json
+data/online_tasks/*.json 
+src/tasks
+src/data_utils/get_filtered_tasks.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -164,9 +169,13 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Playwright authentificaiton info
+playwright
+playwright/.auth
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+#.idea/\
