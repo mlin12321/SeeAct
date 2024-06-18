@@ -163,7 +163,6 @@ async def main(config, base_dir) -> None:
         openai_config["api_key"] = os.environ["OPENAI_API_KEY"]
         print("==" * 25 + " USING SYSTEM API KEY DEFAULT " + "==" * 25)
 
-    # assert False, "RETURN"
     if "api_key" not in openai_config or openai_config["api_key"] == "Your API Key Here":
         raise Exception(
             f"Please set your GPT API key first. (in {os.path.join(base_dir, 'config', 'demo_mode.toml')} by default)")
@@ -218,6 +217,7 @@ async def main(config, base_dir) -> None:
         query_tasks.append(task_dict)
 
     for single_query_task in query_tasks:
+
         confirmed_task = single_query_task["confirmed_task"]
         confirmed_website = single_query_task["website"]
 
@@ -227,8 +227,15 @@ async def main(config, base_dir) -> None:
             confirmed_website_url = confirmed_website
         task_id = single_query_task["task_id"]
         main_result_path = os.path.join(save_file_dir, task_id)
-
+        
         if not os.path.exists(main_result_path):
+            print(50 * "++")
+            print("Next Website?")
+            permission = None 
+            while permission != "Continue":
+                permission = await ainput('Type Continue to continue: ')
+                permission = permission.strip()
+            print(50 * "==")
             os.makedirs(main_result_path)
         else:
             await aprint(f"{main_result_path} already exists")
@@ -284,10 +291,6 @@ async def main(config, base_dir) -> None:
                 logger.info("Failed to fully load the webpage before timeout")
                 logger.info(e)
             await asyncio.sleep(3)
-
-            await asyncio.sleep(10)
-
-            assert False, "testing..."
 
             taken_actions = []
             complete_flag = False
@@ -473,7 +476,7 @@ async def main(config, base_dir) -> None:
                     candidate_ids = all_candidate_ids[multichoice_i:multichoice_i + step_length]
                     choices = format_choices(elements, candidate_ids, confirmed_task, taken_actions)
                     query_count += 1
-                    # Format prompts for LLM inference
+                    # Format prompts for LLM inference #TODO:CHECK
                     prompt = generate_prompt(task=confirmed_task, previous=taken_actions, choices=choices,
                                              experiment_split="SeeAct")
                     if dev_mode:

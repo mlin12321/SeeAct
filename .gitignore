@@ -5,6 +5,8 @@
 *.png
 __pycache__/
 online_results/*
+seeact_package/seeact_agent_files/*
+model
 
 # Generated files
 seeact_package/seeact_agent_files/*

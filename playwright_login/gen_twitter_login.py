@@ -45,15 +45,15 @@ def x_login_and_save_auth():
 def x_test_auth():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
-        context = browser.new_context(storage_state="playwright_login/x_auth.json")
+        context = browser.new_context(storage_state="playwright_login/twitter_auth.json")
 
         # Replace with your login page URL
         page = context.new_page()
-        page.goto("https://x.com")
+        page.goto("https://twitter.com")
 
         time.sleep(5)
         browser.close()
 
 if __name__ == "__main__":
-    # x_login_and_save_auth()
+    #x_login_and_save_auth()
     x_test_auth()
