@@ -124,7 +124,11 @@ class SeeActAgent:
         except:
             self.config['basic']['storage_state'] = None
 
-        self.tasks = [self.config["basic"]["default_task"]]
+        # self.tasks = [self.config["basic"]["default_task"]]
+
+        self.tasks = [default_task] if default_task is not None else [self.config["basic"]["default_task"]] 
+        self.config['basic']['default_website'] = default_website
+        self.config['basic']['default_task'] = default_website
 
         # Get authentication state from playwright_logins (need to set this manually for each site that requires login)
         site_auth = default_website_name.strip().replace(" ", "_").lower() + "_auth.json"
@@ -523,7 +527,7 @@ ELEMENT: The uppercase letter of your choice.''',
         
         if self.config['playwright']['tracing']:
             await self.session_control['context'].tracing.start_chunk(title=f'{self.task_id}-Time Step-{self.time_step}', name=f"{self.time_step}")
-            self.logger("Save playwright trace file")
+            self.logger.info("Save playwright trace file")
 
         self.time_step += 1
         
@@ -649,14 +653,14 @@ ELEMENT: The uppercase letter of your choice.''',
             await self.session_control['context'].tracing.stop_chunk(
                 path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
             )
-            self.logger("Save playwright trace file")
+            self.logger.info("Save playwright trace file")
 
             # If TERMINATE action has not been called, check if current time step exceeds allowed time step,
             # and if number of non-effective operations exceedes the allowed paramteter
             if self.complete_flag != True:
-                if self.continous_no_op >= self.config['experiment']['max_continous_no_op']:
+                if self.continuous_no_op >= self.config['experiment']['max_continuous_no_op']:
                     self.complete_flag = True
-                    self.logger.info("Maximum number of non-effective continous ops has been exceeded. Terminating...")
+                    self.logger.info("Maximum number of non-effective continuous ops has been exceeded. Terminating...")
                 elif self.time_step >= self.config['experiment']['max_op']:
                     self.complete_flag = True
                     self.logger.info("Maximum number of allowed operations has been exceeded. Terminating...")
@@ -680,14 +684,14 @@ ELEMENT: The uppercase letter of your choice.''',
             await self.session_control['context'].tracing.stop_chunk(
                 path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
             )
-            self.logger("Save playwright trace file")
+            self.logger.info("Save playwright trace file")
 
             # If TERMINATE action has not been called (and it will never be down here), 
             # check if current time step exceeds allowed time step,
             # and if number of non-effective operations exceedes the allowed paramteter
-            if self.continous_no_op >= self.config['experiment']['max_continous_no_op']:
+            if self.continuous_no_op >= self.config['experiment']['max_continuous_no_op']:
                 self.complete_flag = True
-                self.logger.info("Maximum number of non-effective continous ops has been exceeded. Terminating...")
+                self.logger.info("Maximum number of non-effective continuous ops has been exceeded. Terminating...")
             elif self.time_step >= self.config['experiment']['max_op']:
                 self.complete_flag = True
                 self.logger.info("Maximum number of allowed operations has been exceeded. Terminating...")

@@ -53,4 +53,5 @@ def glassdoor_test_auth():
 
 if __name__ == "__main__":
     glassdoor_login_and_save_auth()
-    # glassdoor_test_auth()
+    time.sleep(5)
+    glassdoor_test_auth()

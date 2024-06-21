@@ -15,8 +15,7 @@ playwright_login/*.json
 data/online_tasks/*.json 
 src/tasks
 src/data_utils/get_filtered_tasks.py
-seeact_package/seeact/data_utils/get_filtered_tasks.py
-seeact_package/seeact/data_utils/small_load_tasks.py
+seeact_package/seeact/data_utils/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

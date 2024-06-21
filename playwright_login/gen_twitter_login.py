@@ -26,9 +26,9 @@ def x_login_and_save_auth():
         time.sleep(1)
         page.get_by_label("Phone, email, or username").press("Enter")
         time.sleep(1)
-        page.get_by_test_id("ocfEnterTextTextInput").click()
-        page.get_by_test_id("ocfEnterTextTextInput").fill(x_username)
-        page.get_by_test_id("ocfEnterTextTextInput").press("Enter")
+        # page.get_by_test_id("ocfEnterTextTextInput").click()
+        # page.get_by_test_id("ocfEnterTextTextInput").fill(x_username)
+        # page.get_by_test_id("ocfEnterTextTextInput").press("Enter")
         page.get_by_label("Password", exact=True).fill(x_password)
         time.sleep(1)
         page.get_by_label("Password", exact=True).press("Enter")
@@ -55,5 +55,6 @@ def x_test_auth():
         browser.close()
 
 if __name__ == "__main__":
-    #x_login_and_save_auth()
+    x_login_and_save_auth()
+    time.sleep(5)
     x_test_auth()
