@@ -33,14 +33,16 @@ from .demo_utils.inference_engine import engine_factory
 
 class SeeActAgent:
     def __init__(self,
+                 task_id = "NO_TASK_ID_SPECIFIED",
                  config_path=None,
                  save_file_dir="seeact_agent_files",
                  default_task='Find the pdf of the paper "GPT-4V(ision) is a Generalist Web Agent, if Grounded"',
                  default_website="https://www.google.com/",
+                 default_website_name = "Google",
                  input_info=["screenshot"],
                  grounding_strategy="text_choice",
-                 max_auto_op=50,
-                 max_continuous_no_op=5,
+                 max_auto_op=20,
+                 max_continuous_no_op=2,
                  highlight=False,
                  headless=False,
                  args=[],
@@ -71,6 +73,7 @@ class SeeActAgent:
                     print(f"Configuration File Loaded - {config_path}")
                     config = toml.load(config)
             else:
+                assert False, "Not supposed to be here..."
                 config = {
                     "basic": {
                         "save_file_dir": save_file_dir,
@@ -116,10 +119,29 @@ class SeeActAgent:
             'context': None,
             'browser': None
         }
+        try:
+            self.config['basic']['storage_state'] = config['basic']['storage_state']
+        except:
+            self.config['basic']['storage_state'] = None
+
         self.tasks = [self.config["basic"]["default_task"]]
 
-        self.main_path = os.path.join(self.config["basic"]["save_file_dir"], datetime.now().strftime("%Y%m%d_%H%M%S"))
-        os.makedirs(self.main_path, exist_ok=True)
+        # Get authentication state from playwright_logins (need to set this manually for each site that requires login)
+        site_auth = default_website_name.strip().replace(" ", "_").lower() + "_auth.json"
+        if site_auth in os.listdir("../playwright_login"):
+            self.storage_state="../playwright_login/" + site_auth
+        else:
+            self.storage_state= None
+
+        self.main_path = os.path.join(self.config["basic"]["save_file_dir"], task_id)#os.path.join(self.config["basic"]["save_file_dir"], datetime.now().strftime("%Y%m%d_%H%M%S"))
+        if not os.path.exists(self.main_path):
+            os.makedirs(self.main_path, exist_ok=True)
+        else:
+            print(f'{self.main_path} already exists')
+            assert not self.config['experiment']['overwrite'], 'overwrite not enabled, terminating program...'
+            
+        self.task_id = task_id
+
         self.action_space = ["CLICK", "PRESS ENTER", "HOVER", "SCROLL UP", "SCROLL DOWN", "NEW TAB", "CLOSE TAB",
                              "GO BACK", "GO FORWARD",
                              "TERMINATE", "SELECT", "TYPE", "GOTO", "MEMORIZE"]  # Define the list of actions here
@@ -329,8 +351,17 @@ ELEMENT: The uppercase letter of your choice.''',
                                                                     args=self.config['browser'][
                                                                         'args'] if args is None else args)
         self.session_control['context'] = await normal_new_context_async(self.session_control['browser'],
+                                                                         tracing=self.config["playwright"]["tracing"],
+                                                                         storage_state=self.storage_state,
+                                                                         trace_screenshots=self.config["playwright"]["trace"]["screenshots"],
+                                                                         trace_snapshots=self.config["playwright"]["trace"]["snapshots"],
+                                                                         trace_sources=self.config["playwright"]["trace"]["sources"],
                                                                          viewport=self.config['browser'][
                                                                              'viewport'])
+        
+        # self.session_control['context'] = await normal_new_context_async(self.session_control['browser'],
+        #                                                                  viewport=self.config['browser'][
+        #                                                                      'viewport'])
 
         self.session_control['context'].on("page", self.page_on_open_handler)
         await self.session_control['context'].new_page()
@@ -395,8 +426,6 @@ ELEMENT: The uppercase letter of your choice.''',
             selector = None
 
         page = self.session_control['active_page']
-
-
 
         if action_name == "CLICK" and selector:
             await selector.click(timeout=2000)
@@ -479,8 +508,6 @@ ELEMENT: The uppercase letter of your choice.''',
         Generate a prediction for the next action based on the webpage elements and previous actions.
         """
 
-        self.time_step += 1
-
         try:
             await self.session_control["active_page"].wait_for_load_state('load')
         except Exception as e:
@@ -493,7 +520,13 @@ ELEMENT: The uppercase letter of your choice.''',
 
         elements = await get_interactive_elements_with_playwright(self.session_control['active_page'],
                                                                   self.config['browser']['viewport'])
+        
+        if self.config['playwright']['tracing']:
+            await self.session_control['context'].tracing.start_chunk(title=f'{self.task_id}-Time Step-{self.time_step}', name=f"{self.time_step}")
+            self.logger("Save playwright trace file")
 
+        self.time_step += 1
+        
         '''
              0: center_point =(x,y)
              1: description
@@ -612,6 +645,22 @@ ELEMENT: The uppercase letter of your choice.''',
                 self.continuous_no_op = 0
             else:
                 self.continuous_no_op += 1
+
+            await self.session_control['context'].tracing.stop_chunk(
+                path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
+            )
+            self.logger("Save playwright trace file")
+
+            # If TERMINATE action has not been called, check if current time step exceeds allowed time step,
+            # and if number of non-effective operations exceedes the allowed paramteter
+            if self.complete_flag != True:
+                if self.continous_no_op >= self.config['experiment']['max_continous_no_op']:
+                    self.complete_flag = True
+                    self.logger.info("Maximum number of non-effective continous ops has been exceeded. Terminating...")
+                elif self.time_step >= self.config['experiment']['max_op']:
+                    self.complete_flag = True
+                    self.logger.info("Maximum number of allowed operations has been exceeded. Terminating...")
+            
             return 0
         except Exception as e:
 
@@ -627,9 +676,30 @@ ELEMENT: The uppercase letter of your choice.''',
             self.logger.info(new_action)
             self.taken_actions.append(new_action)
             self.continuous_no_op += 1
+
+            await self.session_control['context'].tracing.stop_chunk(
+                path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
+            )
+            self.logger("Save playwright trace file")
+
+            # If TERMINATE action has not been called (and it will never be down here), 
+            # check if current time step exceeds allowed time step,
+            # and if number of non-effective operations exceedes the allowed paramteter
+            if self.continous_no_op >= self.config['experiment']['max_continous_no_op']:
+                self.complete_flag = True
+                self.logger.info("Maximum number of non-effective continous ops has been exceeded. Terminating...")
+            elif self.time_step >= self.config['experiment']['max_op']:
+                self.complete_flag = True
+                self.logger.info("Maximum number of allowed operations has been exceeded. Terminating...")
+            
             return 1
 
     async def stop(self):
+
+        # if self.config['playwright']['tracing']:
+        #     await self.session_control['context'].tracing.stop_chunk(
+        #         path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
+        #     )
 
         try:
             close_context = self.session_control['context']
