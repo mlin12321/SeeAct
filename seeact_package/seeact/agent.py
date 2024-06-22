@@ -566,7 +566,7 @@ ELEMENT: The uppercase letter of your choice.''',
         screenshot_path = os.path.join(self.main_path, 'screenshots', f'screen_{self.time_step}.png')
         try:                      
             await self.session_control['active_page'].screenshot(path=screenshot_path)
-            # await self.session_control['active_page'].evaluate("unmarkPage()")
+            # await self.session_control['active_page'].evaluate("unmarkPage()") #TODO: CHECK IF SHOULD PLACE ELSEWHERE
         except Exception as e:
             self.logger.info(f"Failed to take screenshot: {e}")
 
@@ -644,6 +644,7 @@ ELEMENT: The uppercase letter of your choice.''',
                 pred_action = "NONE"
             new_action = await self.perform_action(pred_element, pred_action, pred_value)
             self.taken_actions.append(new_action)
+
             if pred_action != "NONE":
                 self.valid_op += 1
                 self.continuous_no_op = 0
@@ -654,6 +655,8 @@ ELEMENT: The uppercase letter of your choice.''',
                 path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
             )
             self.logger.info("Save playwright trace file")
+
+            await self.session_control['active_page'].evaluate("unmarkPage()") #TODO: CHECK AND RMEOVE
 
             # If TERMINATE action has not been called, check if current time step exceeds allowed time step,
             # and if number of non-effective operations exceedes the allowed paramteter
@@ -685,6 +688,8 @@ ELEMENT: The uppercase letter of your choice.''',
                 path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
             )
             self.logger.info("Save playwright trace file")
+
+            await self.session_control['active_page'].evaluate("unmarkPage()") #TODO: CHECK AND RMEOVE
 
             # If TERMINATE action has not been called (and it will never be down here), 
             # check if current time step exceeds allowed time step,

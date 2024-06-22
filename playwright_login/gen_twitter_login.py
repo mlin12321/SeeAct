@@ -38,7 +38,7 @@ def x_login_and_save_auth():
         # page.wait_for_load_state("networkidle")
         
         # Save authentication state to a file
-        context.storage_state(path="playwright_login/x_auth.json")
+        context.storage_state(path="playwright_login/twitter_auth.json")
 
         browser.close()
 

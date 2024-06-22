@@ -21,7 +21,7 @@ def format_choices(elements):
     for element in elements:
         if "description" in element and "=" in element["description"]:
             description_dict = [] 
-            for sub in shlex.split(element["description"]): 
+            for sub in shlex.split(shlex.quote(element["description"])): 
                 if '=' in sub:
                     description_dict.append(map(str.strip, sub.split('=', 1)))
             element.update(dict(description_dict))
