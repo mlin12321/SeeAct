@@ -14,6 +14,7 @@ seeact_package/seeact_agent_files/*
 playwright_login/*.json
 data/online_tasks/*.json 
 src/tasks
+src/gen_traj
 src/data_utils/get_filtered_tasks.py
 seeact_package/seeact/data_utils/*
 

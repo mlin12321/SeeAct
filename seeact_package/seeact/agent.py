@@ -432,10 +432,10 @@ ELEMENT: The uppercase letter of your choice.''',
         page = self.session_control['active_page']
 
         if action_name == "CLICK" and selector:
-            await selector.click(timeout=2000)
+            await selector.click(timeout=2000) #timeout = 2000 TODO
             self.logger.info(f"Clicked on element: {element_repr}")
         elif action_name == "HOVER" and selector:
-            await selector.hover(timeout=2000)
+            await selector.hover(timeout=2000) #timeout = 2000 TODO
             self.logger.info(f"Hovered over element: {element_repr}")
         elif action_name == "TYPE" and selector:
             await selector.fill(value)
@@ -520,14 +520,13 @@ ELEMENT: The uppercase letter of your choice.''',
         with open(os.path.join(dirname(__file__), "mark_page.js")) as f:
             mark_page_script = f.read()
         await self.session_control['active_page'].evaluate(mark_page_script)
-        # bboxes = await self.session_control['active_page'].evaluate("markPage()")
 
         elements = await get_interactive_elements_with_playwright(self.session_control['active_page'],
                                                                   self.config['browser']['viewport'])
         
-        if self.config['playwright']['tracing']:
-            await self.session_control['context'].tracing.start_chunk(title=f'{self.task_id}-Time Step-{self.time_step}', name=f"{self.time_step}")
-            self.logger.info("Save playwright trace file")
+        # if self.config['playwright']['tracing']: #TODO CHECK THIS
+        #     await self.session_control['context'].tracing.start_chunk(title=f'{self.task_id}-Time Step-{self.time_step}', name=f"{self.time_step}")
+        #     self.logger.info("Save playwright trace file")
 
         self.time_step += 1
         
@@ -546,6 +545,8 @@ ELEMENT: The uppercase letter of your choice.''',
 
         elements = [{**x, "idx": i, "option": generate_option_name(i)} for i,x in enumerate(elements)]
         page = self.session_control['active_page']
+
+        # await page.evaluate("unmarkPage()")
         await page.evaluate("""elements => {
             return window.som.drawBoxes(elements);
             }""", elements)
@@ -565,8 +566,8 @@ ELEMENT: The uppercase letter of your choice.''',
         # Capture a screenshot for the current state of the webpage, if required by the model
         screenshot_path = os.path.join(self.main_path, 'screenshots', f'screen_{self.time_step}.png')
         try:                      
-            await self.session_control['active_page'].screenshot(path=screenshot_path)
-            # await self.session_control['active_page'].evaluate("unmarkPage()") #TODO: CHECK IF SHOULD PLACE ELSEWHERE
+            #await self.session_control['active_page'].screenshot(path=screenshot_path)
+            await page.screenshot(path=screenshot_path)
         except Exception as e:
             self.logger.info(f"Failed to take screenshot: {e}")
 
@@ -633,9 +634,20 @@ ELEMENT: The uppercase letter of your choice.''',
         Execute the predicted action on the webpage.
         """
 
+        await self.session_control['active_page'].evaluate("unmarkPage()")
         pred_element = prediction_dict["element"]
         pred_action = prediction_dict["action"]
         pred_value = prediction_dict["value"]
+
+        # TODO CHECK THIS
+        # Moving it here to reduce the time it takes to capture a trace, since for some websites it can take minutes to save
+        if self.config['playwright']['tracing']:
+            await self.session_control['context'].tracing.start_chunk(title=f'{self.task_id}-Time Step-{self.time_step}', name=f"{self.time_step}")
+            self.logger.info("Saving playwright trace file...")
+
+        with open(os.path.join(dirname(__file__), "mark_page.js")) as f:
+            mark_page_script = f.read()
+
         try:
             if (pred_action not in self.no_element_op) and pred_element == None:
                 # self.dev_logger.info
@@ -651,12 +663,13 @@ ELEMENT: The uppercase letter of your choice.''',
             else:
                 self.continuous_no_op += 1
 
-            await self.session_control['context'].tracing.stop_chunk(
-                path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
-            )
-            self.logger.info("Save playwright trace file")
+            if self.config['playwright']['tracing']:
+                await self.session_control['context'].tracing.stop_chunk(
+                    path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
+                )
+                self.logger.info("Saved playwright trace file")
 
-            await self.session_control['active_page'].evaluate("unmarkPage()") #TODO: CHECK AND RMEOVE
+            #await self.session_control['active_page'].evaluate("unmarkPage()") 
 
             # If TERMINATE action has not been called, check if current time step exceeds allowed time step,
             # and if number of non-effective operations exceedes the allowed paramteter
@@ -684,12 +697,14 @@ ELEMENT: The uppercase letter of your choice.''',
             self.taken_actions.append(new_action)
             self.continuous_no_op += 1
 
-            await self.session_control['context'].tracing.stop_chunk(
-                path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
-            )
-            self.logger.info("Save playwright trace file")
 
-            await self.session_control['active_page'].evaluate("unmarkPage()") #TODO: CHECK AND RMEOVE
+            if self.config['playwright']['tracing']:
+                await self.session_control['context'].tracing.stop_chunk(
+                    path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
+                )
+                self.logger.info("Saved playwright trace file")
+                
+            #await self.session_control['active_page'].evaluate("unmarkPage()") 
 
             # If TERMINATE action has not been called (and it will never be down here), 
             # check if current time step exceeds allowed time step,
@@ -738,6 +753,11 @@ ELEMENT: The uppercase letter of your choice.''',
         self.logger.info("Agent stopped.")
 
         saveconfig(self.config, os.path.join(self.main_path, 'config.toml'))
+
+        handlers = self.logger.handlers[:]
+        for handler in handlers:
+            self.logger.removeHandler(handler)
+            handler.close()
 
     def clear_action_history(self):
         """
