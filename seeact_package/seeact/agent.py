@@ -253,7 +253,7 @@ ELEMENT: The uppercase letter of your choice.''',
 
     def _setup_logger(self, redirect_to_dev_log=False):
         """Set up a logger to log to both file and console within the main_path."""
-        logger_name = 'SeeActAgent'
+        logger_name = 'SeeActAgent' + self.task_id
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
         if not logger.handlers:  # Avoid adding handlers multiple times
@@ -643,7 +643,7 @@ ELEMENT: The uppercase letter of your choice.''',
         # Moving it here to reduce the time it takes to capture a trace, since for some websites it can take minutes to save
         if self.config['playwright']['tracing']:
             await self.session_control['context'].tracing.start_chunk(title=f'{self.task_id}-Time Step-{self.time_step}', name=f"{self.time_step}")
-            self.logger.info("Saving playwright trace file...")
+            # self.logger.info("Saving playwright trace file...")
 
         with open(os.path.join(dirname(__file__), "mark_page.js")) as f:
             mark_page_script = f.read()
@@ -668,6 +668,8 @@ ELEMENT: The uppercase letter of your choice.''',
                     path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
                 )
                 self.logger.info("Saved playwright trace file")
+         
+                    
 
             #await self.session_control['active_page'].evaluate("unmarkPage()") 
 
@@ -703,7 +705,7 @@ ELEMENT: The uppercase letter of your choice.''',
                     path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
                 )
                 self.logger.info("Saved playwright trace file")
-                
+
             #await self.session_control['active_page'].evaluate("unmarkPage()") 
 
             # If TERMINATE action has not been called (and it will never be down here), 

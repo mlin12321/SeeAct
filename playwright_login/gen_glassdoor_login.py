@@ -47,8 +47,7 @@ def glassdoor_test_auth():
         # Replace with your login page URL
         page = context.new_page()
         page.goto("https://glassdoor.com")
-
-        time.sleep(5)
+        
         browser.close()
 
 if __name__ == "__main__":
