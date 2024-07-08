@@ -50,6 +50,6 @@ def linkedin_test_auth():
         browser.close()
 
 if __name__ == "__main__":
-    linkedin_login_and_save_auth()
-    time.sleep(5)
+    # linkedin_login_and_save_auth()
+    # time.sleep(5)
     linkedin_test_auth()

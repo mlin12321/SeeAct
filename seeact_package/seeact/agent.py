@@ -517,6 +517,19 @@ ELEMENT: The uppercase letter of your choice.''',
         except Exception as e:
             pass
 
+        self.time_step += 1
+        
+        page = self.session_control['active_page']
+
+        # Capture an unmarked screenshot for the current state of the webpage
+        unmarked_screenshot_path = os.path.join(self.main_path, 'unmarked_screenshots', f'unmarked_screen_{self.time_step}.png')
+        try:                      
+            #await self.session_control['active_page'].screenshot(path=screenshot_path)
+            await page.screenshot(path=unmarked_screenshot_path)
+        except Exception as e:
+            self.logger.info(f"Failed to take unmarked screenshot: {e}")
+
+
         with open(os.path.join(dirname(__file__), "mark_page.js")) as f:
             mark_page_script = f.read()
         await self.session_control['active_page'].evaluate(mark_page_script)
@@ -527,8 +540,6 @@ ELEMENT: The uppercase letter of your choice.''',
         # if self.config['playwright']['tracing']: #TODO CHECK THIS
         #     await self.session_control['context'].tracing.start_chunk(title=f'{self.task_id}-Time Step-{self.time_step}', name=f"{self.time_step}")
         #     self.logger.info("Save playwright trace file")
-
-        self.time_step += 1
         
         '''
              0: center_point =(x,y)
