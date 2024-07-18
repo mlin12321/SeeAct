@@ -27,9 +27,9 @@ from .data_utils.format_prompt_utils import get_index_from_option_name, generate
     generate_new_referring_prompt, format_options, generate_option_name
 from .demo_utils.browser_helper import normal_launch_async, normal_new_context_async, \
     get_interactive_elements_with_playwright, select_option, saveconfig
-from .demo_utils.format_prompt import format_choices, postprocess_action_lmm
 from .demo_utils.inference_engine import engine_factory
-
+from .demo_utils.format_prompt import format_choices, format_ranking_input, postprocess_action_lmm
+from .demo_utils.ranking_model import find_topk
 
 class SeeActAgent:
     def __init__(self,
@@ -40,7 +40,7 @@ class SeeActAgent:
                  default_website="https://www.google.com/",
                  default_website_name = "Google",
                  input_info=["screenshot"],
-                 grounding_strategy="text_choice",
+                 grounding_strategy="text_choice_som",
                  max_auto_op=20,
                  max_continuous_no_op=2,
                  highlight=False,
@@ -61,9 +61,9 @@ class SeeActAgent:
                      "sources": True
                  },
                  rate_limit=-1,
-                 model="gpt-4-turbo",
-                 temperature=0.9
-
+                 model="gpt-4-o",
+                 temperature=0.9,
+                 ranking_model=None
                  ):
 
         try:
@@ -126,6 +126,9 @@ class SeeActAgent:
 
         # self.tasks = [self.config["basic"]["default_task"]]
 
+        self.ranking_model = ranking_model 
+        self.top_k = self.config["experiment"]["top_k"]
+
         self.tasks = [default_task] if default_task is not None else [self.config["basic"]["default_task"]] 
         self.config['basic']['default_website'] = default_website
         self.config['basic']['default_task'] = default_website
@@ -137,9 +140,10 @@ class SeeActAgent:
         else:
             self.storage_state= None
 
-        self.main_path = os.path.join(self.config["basic"]["save_file_dir"], task_id)#os.path.join(self.config["basic"]["save_file_dir"], datetime.now().strftime("%Y%m%d_%H%M%S"))
+        self.main_path = os.path.join(self.config["basic"]["save_file_dir"], default_website_name, task_id)
+        #os.path.join(self.config["basic"]["save_file_dir"], datetime.now().strftime("%Y%m%d_%H%M%S"))
         if not os.path.exists(self.main_path):
-            os.makedirs(self.main_path, exist_ok=True)
+            os.makedirs(self.main_path, exist_ok=False)
         else:
             print(f'{self.main_path} already exists')
             assert not self.config['experiment']['overwrite'], 'overwrite not enabled, terminating program...'
@@ -512,10 +516,10 @@ ELEMENT: The uppercase letter of your choice.''',
         Generate a prediction for the next action based on the webpage elements and previous actions.
         """
 
-        try:
-            await self.session_control["active_page"].wait_for_load_state('load')
-        except Exception as e:
-            pass
+        # try:
+        #     await self.session_control["active_page"].wait_for_load_state('load')
+        # except Exception as e:
+        #     pass
 
         self.time_step += 1
         
@@ -537,6 +541,30 @@ ELEMENT: The uppercase letter of your choice.''',
         elements = await get_interactive_elements_with_playwright(self.session_control['active_page'],
                                                                   self.config['browser']['viewport'])
         
+        # with open('read_elements.txt', 'w') as f:
+        #     print(elements, file=f)
+
+        ranker_path = None
+        try:
+            ranker_path = self.config['basic']['ranker_path']
+            if not os.path.exists(ranker_path):
+                ranker_path = None
+        except:
+            pass
+        
+        if ranker_path and len(elements) > self.top_k:
+            ranking_input = format_ranking_input(elements, self.tasks[0], self.taken_actions)
+            self.logger.info("Start to rank")
+            pred_scores = self.ranking_model.predict(ranking_input, convert_to_numpy=True, show_progress_bar=False,
+                                                batch_size=100, )
+            topk_values, topk_indices = find_topk(pred_scores, k=min(self.top_k, len(elements)))
+            all_candidate_ids = list(topk_indices)
+            ranked_elements = [elements[i] for i in all_candidate_ids]
+
+            with open('read_ranked_elements.txt', 'w') as f:
+                print(ranked_elements, file=f)
+
+            
         # if self.config['playwright']['tracing']: #TODO CHECK THIS
         #     await self.session_control['context'].tracing.start_chunk(title=f'{self.task_id}-Time Step-{self.time_step}', name=f"{self.time_step}")
         #     self.logger.info("Save playwright trace file")
@@ -557,7 +585,7 @@ ELEMENT: The uppercase letter of your choice.''',
         elements = [{**x, "idx": i, "option": generate_option_name(i)} for i,x in enumerate(elements)]
         page = self.session_control['active_page']
 
-        # await page.evaluate("unmarkPage()")
+        await page.evaluate("unmarkPage()")
         await page.evaluate("""elements => {
             return window.som.drawBoxes(elements);
             }""", elements)
@@ -631,7 +659,7 @@ ELEMENT: The uppercase letter of your choice.''',
         self.logger.debug(f"Value: {pred_value}")
 
         prediction={"action_generation": output0, "action_grounding": output, "element": pred_element,
-                "action": pred_action, "value": pred_value}
+                "action": pred_action, "value": pred_value, "url_before_screenshot": self.session_control['active_page'].url}
 
         self.predictions.append(prediction)
 
@@ -645,7 +673,11 @@ ELEMENT: The uppercase letter of your choice.''',
         Execute the predicted action on the webpage.
         """
 
-        await self.session_control['active_page'].evaluate("unmarkPage()")
+        try:
+            await self.session_control['active_page'].evaluate("unmarkPage()")
+        except:
+            pass 
+
         pred_element = prediction_dict["element"]
         pred_action = prediction_dict["action"]
         pred_value = prediction_dict["value"]
@@ -656,8 +688,9 @@ ELEMENT: The uppercase letter of your choice.''',
             await self.session_control['context'].tracing.start_chunk(title=f'{self.task_id}-Time Step-{self.time_step}', name=f"{self.time_step}")
             # self.logger.info("Saving playwright trace file...")
 
-        with open(os.path.join(dirname(__file__), "mark_page.js")) as f:
-            mark_page_script = f.read()
+        
+
+        return_val = 0
 
         try:
             if (pred_action not in self.no_element_op) and pred_element == None:
@@ -674,13 +707,6 @@ ELEMENT: The uppercase letter of your choice.''',
             else:
                 self.continuous_no_op += 1
 
-            if self.config['playwright']['tracing']:
-                await self.session_control['context'].tracing.stop_chunk(
-                    path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
-                )
-                self.logger.info("Saved playwright trace file")
-         
-                    
 
             #await self.session_control['active_page'].evaluate("unmarkPage()") 
 
@@ -694,10 +720,13 @@ ELEMENT: The uppercase letter of your choice.''',
                     self.complete_flag = True
                     self.logger.info("Maximum number of allowed operations has been exceeded. Terminating...")
             
-            return 0
+            return_val = 0
         except Exception as e:
 
-            new_action = f"Failed to perform {pred_action} on {pred_element['description']} with value '{pred_value}': {e}"
+            if pred_element is not None:
+                new_action = f"Failed to perform {pred_action} on {pred_element['description']} with value '{pred_value}': {e}"
+            else:
+                new_action = f"Failed to perform {pred_action}, element not found: {e}"
 
 
             traceback_info = traceback.format_exc()
@@ -709,13 +738,6 @@ ELEMENT: The uppercase letter of your choice.''',
             self.logger.info(new_action)
             self.taken_actions.append(new_action)
             self.continuous_no_op += 1
-
-
-            if self.config['playwright']['tracing']:
-                await self.session_control['context'].tracing.stop_chunk(
-                    path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
-                )
-                self.logger.info("Saved playwright trace file")
 
             #await self.session_control['active_page'].evaluate("unmarkPage()") 
 
@@ -729,14 +751,23 @@ ELEMENT: The uppercase letter of your choice.''',
                 self.complete_flag = True
                 self.logger.info("Maximum number of allowed operations has been exceeded. Terminating...")
             
-            return 1
+            return_val = 1
+
+        # Need this or will execute actions without waiting will just always be blank screens
+        try:
+            await self.session_control["active_page"].wait_for_load_state('load')
+        except Exception as e:
+            pass
+
+        if self.config['playwright']['tracing']:
+            await self.session_control['context'].tracing.stop_chunk(
+                path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
+            )
+            self.logger.info("Saved playwright trace file")
+                
+        return return_val
 
     async def stop(self):
-
-        # if self.config['playwright']['tracing']:
-        #     await self.session_control['context'].tracing.stop_chunk(
-        #         path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
-        #     )
 
         try:
             close_context = self.session_control['context']

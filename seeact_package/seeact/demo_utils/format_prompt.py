@@ -152,8 +152,25 @@ def process_string(input_string):
         input_string = input_string[:-1]
     return input_string
 
+def format_ranking_input(elements, task, previous_actions):
+    converted_elements = [
+        (f'<{element[-1]} id="{i}">' if element[-1]!='a' else f'<link id="{i}">')
+                    + (
+                        element[1]
+                        if len(element[1].split()) < 20
+                        else " ".join(element[1].split()[:20]) + "..."
+                    )
+                    + (f"</{element[-1]}>" if element[-1]!='a' else f"</link>")
+                    for i, element in enumerate(elements)
+                ]
 
+    query = (
+        f'task is: {task}\n'
+        f'Previous actions: {"; ".join(previous_actions[-3:])}'
+    )
 
+    model_input = [[query, doc] for doc in converted_elements]
+    return model_input
 
 
 
