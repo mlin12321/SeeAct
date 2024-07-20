@@ -50,7 +50,6 @@ async def process_trace(trace_file, page):
         else:
             # action_uid = re.findall(r"get_by_test_id\(\"(.+?)\"\)", action_repr)
             action_uid = re.findall(r"locator\(\"(.+?)\"\)", action_repr)
-            # print(action_uid)
         
         if (
             action_repr.startswith("Locator.count")
@@ -58,14 +57,33 @@ async def process_trace(trace_file, page):
             or len(action_uid) == 0
         ):
             continue
+
+        nth_dex = re.findall(r"nth\(.+?\)", action_repr)[0]
+        if nth_dex:
+            nth_dex = int(re.findall(r"\d+", nth_dex)[0])
+        
+        
+
         action_uid = action_uid[0]
         if action_uid not in action_mapping:
-            action_uids.append(action_uid)
-        action_mapping[action_uid].append(action)
+            action_uids.append((action_uid, nth_dex))
 
-    for action_uid in action_uids:
+        # Doesn't really matter because above should catch it
+        # (every action with an element interaction has an nth_dex asssociated with it)
+        if nth_dex != None:
+            action_mapping[action_uid + "=" + str(nth_dex)].append(action)
+        else:
+            action_mapping[action_uid].append(action)
+
+
+    for (action_uid, nth_dex) in action_uids:
         error = []
-        action_seq = action_mapping[action_uid]
+
+        if nth_dex != None:
+            action_seq = action_mapping[action_uid + "=" + str(nth_dex)]
+        else:
+            action_seq = action_mapping[action_uid]
+
         await action_seq[0].click()
         await page.locator('div.tabbed-pane-tab-label:text("Before")').click()
         async with page.expect_popup() as snapshot_popup:
@@ -82,10 +100,12 @@ async def process_trace(trace_file, page):
             }"""
             )
  
+
             try:
-                target_element = snapshot.locator(action_uid)
+                target_element = snapshot.locator(action_uid).nth(nth_dex)
                 target_boundingbox = await target_element.bounding_box(timeout=10000)
             except Exception as e:
+                print("Can't bind target element!")
                 error.append(str(e))
                 target_boundingbox = None
             for retry_idx in range(k_retry):
@@ -205,6 +225,7 @@ async def process_trace(trace_file, page):
                 "action": {"bounding_box": target_boundingbox},
             }
         )
+        # print(target_boundingbox)
     print(f"{len(processed_annotation)} actions found.")
     return processed_annotation, processed_snapshots, processed_screenshots
 
@@ -233,7 +254,7 @@ async def main(trace_files, args):
                         os.path.join(
                             output_dir,
                             
-                            f"content_step{trace_id}.json", #f"{worker_id}_{session_id}_{trace_id}.content.json",
+                            f"content.json", #f"{worker_id}_{session_id}_{trace_id}.content.json",
                         ),
                         "w",
                     ) as f:
@@ -263,7 +284,7 @@ async def main(trace_files, args):
                     with open(
                         os.path.join(
                             output_dir,
-                            f"screenshot_step{trace_id}.json", #f"{worker_id}_{session_id}_{trace_id}.screenshot.json",
+                            f"screenshot.json", #f"{worker_id}_{session_id}_{trace_id}.screenshot.json",
                         ),
                         "w",
                     ) as f:
@@ -292,8 +313,17 @@ if __name__ == "__main__":
     for trace_file in glob.glob(args.input_pattern):
         
         trace_file = trace_file.split("/")
-        # print(trace_file)
-        online_results_dir = trace_file[-4]
+        if not trace_file[0]:
+            # Handle absolute paths
+            trace_file = trace_file[1:]
+        
+        seeact_dex = trace_file.index("SeeAct")
+        online_results_dir = trace_file[seeact_dex + 1:-3]
+        online_results_dir = "/".join(online_results_dir)
+        # print(online_results_dir)
+
+        # online_results_dir = "/".join(online_results_dir)
+        # print(online_results_dir)
         site_id = trace_file[-3]
         playwright_traces_dir = trace_file[-2]
         trace_id = trace_file[-1].split(".")[0]
@@ -303,7 +333,7 @@ if __name__ == "__main__":
                 args.output_dir,
                 site_id, #website_id,
                 trace_id,
-                f"{trace_id}.content.json", # f"{worker_id}_{session_id}_{trace_id}.content.json",
+                f"content.json", # f"{worker_id}_{session_id}_{trace_id}.content.json",
             )
         ):
             trace_files.append((online_results_dir, site_id, playwright_traces_dir, trace_id)) #trace_files.append((worker_id, website_id, session_id, trace_id))

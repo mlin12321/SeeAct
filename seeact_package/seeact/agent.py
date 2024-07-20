@@ -383,6 +383,15 @@ ELEMENT: The uppercase letter of your choice.''',
             self.logger.info("Failed to fully load the webpage before timeout")
             self.logger.info(e)
 
+        # Capture an unmarked screenshot for the current state of the webpage
+        unmarked_screenshot_path = os.path.join(self.main_path, 'unmarked_screenshots', f'unmarked_screen_{self.time_step + 1}.png')
+        try:                      
+            #await self.session_control['active_page'].screenshot(path=screenshot_path)
+            await self.session_control['active_page'].screenshot(path=unmarked_screenshot_path)
+        except Exception as e:
+            self.logger.info(f"Failed to take unmarked screenshot: {e}")
+                
+
             # await asyncio.sleep(2)
 
     def update_prompt_part(self, part_name, new_text):
@@ -524,14 +533,6 @@ ELEMENT: The uppercase letter of your choice.''',
         self.time_step += 1
         
         page = self.session_control['active_page']
-
-        # Capture an unmarked screenshot for the current state of the webpage
-        unmarked_screenshot_path = os.path.join(self.main_path, 'unmarked_screenshots', f'unmarked_screen_{self.time_step}.png')
-        try:                      
-            #await self.session_control['active_page'].screenshot(path=screenshot_path)
-            await page.screenshot(path=unmarked_screenshot_path)
-        except Exception as e:
-            self.logger.info(f"Failed to take unmarked screenshot: {e}")
 
 
         with open(os.path.join(dirname(__file__), "mark_page.js")) as f:
@@ -758,13 +759,21 @@ ELEMENT: The uppercase letter of your choice.''',
             await self.session_control["active_page"].wait_for_load_state('load')
         except Exception as e:
             pass
-
+        
+        # Capture an unmarked screenshot for the current state of the webpage
+        unmarked_screenshot_path = os.path.join(self.main_path, 'unmarked_screenshots', f'unmarked_screen_{self.time_step + 1}.png')
+        try:                      
+            #await self.session_control['active_page'].screenshot(path=screenshot_path)
+            await self.session_control['active_page'].screenshot(path=unmarked_screenshot_path)
+        except Exception as e:
+            self.logger.info(f"Failed to take unmarked screenshot: {e}")
+                
         if self.config['playwright']['tracing']:
             await self.session_control['context'].tracing.stop_chunk(
                 path=f"{os.path.join(self.main_path, 'playwright_traces', f'{self.time_step}.zip')}"
             )
             self.logger.info("Saved playwright trace file")
-                
+
         return return_val
 
     async def stop(self):
