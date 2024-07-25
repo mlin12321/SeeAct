@@ -119,7 +119,7 @@ async def get_element_description(element, tag_name, role_value, type_value):
          Asynchronously generates a descriptive text for a web element based on its tag type.
          Handles various HTML elements like 'select', 'input', and 'textarea', extracting attributes and content relevant to accessibility and interaction.
     '''
-    # text_content = await element.inner_text(timeout=0)
+    # text_content = await element.inner_text(timeout=20000)
     # text = (text_content or '').strip()
     #
     # print(text)
@@ -145,7 +145,7 @@ async def get_element_description(element, tag_name, role_value, type_value):
     num_parents = await parent_locator.count()
     if num_parents > 0:
         # only will be zero or one parent node
-        parent_text = (await parent_locator.inner_text(timeout=0) or "").strip()
+        parent_text = (await parent_locator.inner_text(timeout=20000) or "").strip()
         if parent_text:
             parent_value += parent_text
     parent_value = remove_extra_eol(get_first_line(parent_value)).strip()
@@ -159,18 +159,18 @@ async def get_element_description(element, tag_name, role_value, type_value):
         text3 = " - Options: "
 
         text2 = await element.evaluate(
-            "select => select.options[select.selectedIndex].textContent", timeout=0
+            "select => select.options[select.selectedIndex].textContent", timeout=20000
         )
 
         if text2:
             options = await element.evaluate("select => Array.from(select.options).map(option => option.text)",
-                                             timeout=0)
+                                             timeout=20000)
             text4 = " | ".join(options)
 
             if not text4:
-                text4 = await element.text_content(timeout=0)
+                text4 = await element.text_content(timeout=20000)
                 if not text4:
-                    text4 = await element.inner_text(timeout=0)
+                    text4 = await element.inner_text(timeout=20000)
 
 
             return parent_value+text1 + remove_extra_eol(text2.strip()) + text3 + text4
@@ -182,18 +182,18 @@ async def get_element_description(element, tag_name, role_value, type_value):
     if tag_name == "input" or tag_name == "textarea":
         if role_value not in none_input_type and type_value not in none_input_type:
             text1 = "input value="
-            text2 = await element.input_value(timeout=0)
+            text2 = await element.input_value(timeout=20000)
             if text2:
                 input_value = text1 + "\"" + text2 + "\"" + " "
 
-    text_content = await element.text_content(timeout=0)
+    text_content = await element.text_content(timeout=20000)
     text = (text_content or '').strip()
 
     # print(text)
     if text:
         text = remove_extra_eol(text)
         if len(text) > 80:
-            text_content_in = await element.inner_text(timeout=0)
+            text_content_in = await element.inner_text(timeout=20000)
             text_in = (text_content_in or '').strip()
             if text_in:
                 return input_value + remove_extra_eol(text_in)
@@ -203,7 +203,7 @@ async def get_element_description(element, tag_name, role_value, type_value):
     # get salient_attributes
     text1 = ""
     for attr in salient_attributes:
-        attribute_value = await element.get_attribute(attr, timeout=0)
+        attribute_value = await element.get_attribute(attr, timeout=20000)
         if attribute_value:
             text1 += f"{attr}=" + "\"" + attribute_value.strip() + "\"" + " "
 
@@ -218,7 +218,7 @@ async def get_element_description(element, tag_name, role_value, type_value):
     num_childs = await first_child_locator.count()
     if num_childs>0:
         for attr in salient_attributes:
-            attribute_value = await first_child_locator.get_attribute(attr, timeout=0)
+            attribute_value = await first_child_locator.get_attribute(attr, timeout=20000)
             if attribute_value:
                 text1 += f"{attr}=" + "\"" + attribute_value.strip() + "\"" + " "
 
@@ -236,7 +236,7 @@ async def get_element_data(element, tag_name,viewport_size,seen_elements=[]):
                          'select', 'textarea', 'adc-tab']
 
 
-        if await element.is_hidden(timeout=0) or await element.is_disabled(timeout=0):
+        if await element.is_hidden(timeout=20000) or await element.is_disabled(timeout=20000):
             return None
 
 
@@ -261,7 +261,7 @@ async def get_element_data(element, tag_name,viewport_size,seen_elements=[]):
             tag_head = tag_name
             real_tag_name = tag_name
         else:
-            real_tag_name = await element.evaluate("element => element.tagName.toLowerCase()", timeout=0)
+            real_tag_name = await element.evaluate("element => element.tagName.toLowerCase()", timeout=20000)
             if real_tag_name in tag_name_list:
                 # already detected
                 return None
@@ -273,8 +273,8 @@ async def get_element_data(element, tag_name,viewport_size,seen_elements=[]):
         if real_tag_name in text_element:
             return None
 
-        role_value = await element.get_attribute('role', timeout=0)
-        type_value = await element.get_attribute('type', timeout=0)
+        role_value = await element.get_attribute('role', timeout=20000)
+        type_value = await element.get_attribute('type', timeout=20000)
         # await aprint("start to get element description",element,tag_name )
         description = await get_element_description(element, real_tag_name, role_value, type_value)
         # print(description)

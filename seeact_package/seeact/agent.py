@@ -374,22 +374,31 @@ ELEMENT: The uppercase letter of your choice.''',
         self.session_control['context'].on("page", self.page_on_open_handler)
         await self.session_control['context'].new_page()
 
+        error_code = 0
         try:
             await self.session_control['active_page'].goto(
                 self.config['basic']['default_website'] if website is None else website,
                 wait_until="load")
             self.logger.info(f"Loaded website: {self.config['basic']['default_website']}")
+
+            error_code = 0
         except Exception as e:
             self.logger.info("Failed to fully load the webpage before timeout")
             self.logger.info(e)
+
+            error_code = 1
 
         # Capture an unmarked screenshot for the current state of the webpage
         unmarked_screenshot_path = os.path.join(self.main_path, 'unmarked_screenshots', f'unmarked_screen_{self.time_step + 1}.png')
         try:                      
             #await self.session_control['active_page'].screenshot(path=screenshot_path)
             await self.session_control['active_page'].screenshot(path=unmarked_screenshot_path)
+
+            
         except Exception as e:
             self.logger.info(f"Failed to take unmarked screenshot: {e}")
+
+        return error_code
                 
 
             # await asyncio.sleep(2)
@@ -586,11 +595,15 @@ ELEMENT: The uppercase letter of your choice.''',
         elements = [{**x, "idx": i, "option": generate_option_name(i)} for i,x in enumerate(elements)]
         page = self.session_control['active_page']
 
-        await page.evaluate("unmarkPage()")
-        await page.evaluate("""elements => {
-            return window.som.drawBoxes(elements);
-            }""", elements)
-
+        try:
+            # await page.evaluate("unmarkPage()")
+            await page.evaluate("""elements => {
+                return window.som.drawBoxes(elements);
+                }""", elements)
+        except:
+            self.logger.info(f"FATAL ERROR IN PREDICT CANNOT DRAW BOXES")
+            pass
+ 
         # Generate choices for the prompt
 
         # , self.config['basic']['default_task'], self.taken_actions
@@ -663,6 +676,11 @@ ELEMENT: The uppercase letter of your choice.''',
                 "action": pred_action, "value": pred_value, "url_before_screenshot": self.session_control['active_page'].url}
 
         self.predictions.append(prediction)
+        
+        try:
+            await self.session_control['active_page'].evaluate("unmarkPage()")
+        except:
+            pass 
 
         return {"action_generation": output0, "action_grounding": output, "element": pred_element,
                 "action": pred_action, "value": pred_value}
@@ -673,11 +691,6 @@ ELEMENT: The uppercase letter of your choice.''',
         """
         Execute the predicted action on the webpage.
         """
-
-        try:
-            await self.session_control['active_page'].evaluate("unmarkPage()")
-        except:
-            pass 
 
         pred_element = prediction_dict["element"]
         pred_action = prediction_dict["action"]

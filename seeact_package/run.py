@@ -17,11 +17,14 @@ async def run_agent(config_file, task_id, web_task, website, website_name, ranki
     agent = SeeActAgent(model="gpt-4o", config_path=config_file, task_id=task_id, default_task=web_task, 
                         default_website=website, default_website_name=website_name, ranking_model=ranking_model)
 
-    await agent.start(headless=True) # start without direct website monitoring
-    while not agent.complete_flag:
-        prediction_dict = await agent.predict()
-        await agent.execute(prediction_dict)
-    await agent.stop()
+    # Return 0 if good, 1 if bad
+    error_code = await agent.start(headless=True) # start without direct website monitoring
+    if not error_code:
+        while not agent.complete_flag:
+            print(website)
+            prediction_dict = await agent.predict()
+            await agent.execute(prediction_dict)
+        await agent.stop()
 
 async def main(agent_execute):        
     await asyncio.gather(*agent_execute)
