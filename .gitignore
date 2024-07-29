@@ -6,6 +6,8 @@
 *.zip
 __pycache__/
 online_results/*
+online_results_backup/*
+online_results_copy/*
 !online_results/process_data
 seeact_package/seeact_agent_files/*
 seeact_package/config_files
@@ -13,6 +15,7 @@ model
 M2W_test
 data/*
 captcha_check/save_captcha_results
+captcha_check/save_captcha_results-DEBUG
 captcha_check/data
 captcha_check/config_files
 process_playwright/test
