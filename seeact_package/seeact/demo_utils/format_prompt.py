@@ -19,9 +19,9 @@ def format_choices(elements):
     converted_elements = []
     elements_w_descriptions = []
     for element in elements:
-        if "description" in element and "=" in element["description"]:
+        if "description" in element and "=" in element["description"] and "'" not in element["description"] and "\"" not in element["description"]:
             description_dict = [] 
-            for sub in shlex.split(shlex.quote(element["description"])): 
+            for sub in shlex.split(element["description"]): 
                 if '=' in sub:
                     description_dict.append(map(str.strip, sub.split('=', 1)))
             element.update(dict(description_dict))

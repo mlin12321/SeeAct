@@ -7,6 +7,7 @@ import json
 from aioconsole import ainput, aprint
 from seeact.demo_utils.ranking_model import CrossEncoder, find_topk
 import torch 
+from collections import defaultdict
 
 # Setup your API Key here, or pass through environment
 # os.environ["OPENAI_API_KEY"] = "Your API KEY Here"
@@ -38,11 +39,7 @@ if __name__ == "__main__":
     with open(args.config_file) as f:
         config_toml = toml.load(f)
     with open(config_toml['experiment']['task_file_path']) as g:
-        tasks_json = json.load(g)
-
-    tasks_set = tasks_json
-
-    agent_execute = []
+        task_json = json.load(g)
 
     ranker_path = None
     try:
@@ -61,7 +58,22 @@ if __name__ == "__main__":
 
     else:
         print("Ranker model not initialized")
+
+    # Create tasks set such that websites alternate, e.g. no two urls are next to each other
+    tasks_set = []
+    tasks_dict = defaultdict(list)
+    for task in task_json:
+        tasks_dict[task['website']].append(task)
+    while not all(value == [] for value in tasks_dict.values()):
+        for task_key in tasks_dict:
+            if len(tasks_dict[task_key]) > 0:
+                tasks_set.append(tasks_dict[task_key].pop(0))
+            else: 
+                continue
         
+    agent_execute = []
+
+    i = 0
     for task_json in tasks_set:
         task_id = task_json['task_id']
         web_task = task_json['confirmed_task']
@@ -79,8 +91,8 @@ if __name__ == "__main__":
 
         agent_execute.append(run_agent(config_file=args.config_file, task_id=task_id, 
                                        web_task=web_task, website=website, website_name=website_name, ranking_model=ranking_model))
-
-    # print(len(agent_execute)) 
+        
+    print("==" * 25 + f"Number of tasks to execute: {len(agent_execute)}" + "==" * 25) 
 
     asyncio.run(main(agent_execute))
     

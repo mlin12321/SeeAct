@@ -6,8 +6,8 @@
 *.zip
 __pycache__/
 online_results/*
-online_results_backup/*
-online_results_copy/*
+online_results_backup
+online_results_copy
 !online_results/process_data
 seeact_package/seeact_agent_files/*
 seeact_package/config_files

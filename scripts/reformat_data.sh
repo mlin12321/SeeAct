@@ -1,3 +1,4 @@
+TASK_PATH='data/online_tasks/web_set_1.json'
 python data/reformat_data.py \
-    --i 'data/online_tasks/website_specific_tasks/zillow_tasks.json' \
-    --o 'data/online_tasks/website_specific_tasks/zillow_tasks.json'
+    --i $TASK_PATH \
+    --o $TASK_PATH 
